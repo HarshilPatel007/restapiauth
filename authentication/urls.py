@@ -1,0 +1,8 @@
+from django.urls import path, include
+from .views import RegisterView, VerifyEmail
+
+
+urlpatterns = [
+    path("register/", RegisterView.as_view(), name="register"),
+    path("email_verification/", VerifyEmail.as_view(), name="email_verification"),
+]
