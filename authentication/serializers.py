@@ -33,3 +33,9 @@ class LoginSerializer(serializers.ModelSerializer):
         model = User
         fields = ["email", "password", "token", "is_verified"]
         read_only_fields = ["token", "is_verified"]
+
+
+class ResendVerificationLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["email", "is_verified"]

@@ -8,7 +8,11 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
-from .serializers import RegisterSerializer, LoginSerializer
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    ResendVerificationLinkSerializer,
+)
 from .utils import Utils
 
 
@@ -97,4 +101,42 @@ class LoginView(generics.GenericAPIView):
                 "account_verification": "Account Is Not Verified (Verify your email before login)"
             },
             status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+
+class ResendVerificationLinkView(generics.GenericAPIView):
+
+    serializer_class = ResendVerificationLinkSerializer
+
+    def post(self, request):
+        email = request.data.get("email")
+        user = User.objects.get(email=email)
+
+        if not user.is_verified:
+            token = RefreshToken.for_user(user).access_token
+            current_site = get_current_site(request)
+            current_site_url = current_site.domain
+            relative_link = reverse("email_verification")
+            absolute_url = (
+                f"http://{current_site_url}{relative_link}?token={str(token)}"
+            )
+            email_body = f"Hi {user.get_full_name()},\nUse below link to verify your email.\n\n{absolute_url}"
+            token_data = {
+                # "domain": absolute_url,
+                "email_to": user.email,
+                "email_subject": "Please verify your email.",
+                "email_body": email_body,
+            }
+
+            Utils.send_email(token_data)
+
+            return Response(
+                {
+                    "account_verification": "Account Verification Link Has Been Sent To Your Email"
+                },
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"account_verification": "Your Account Is Already Verified"},
+            status=status.HTTP_200_OK,
         )
