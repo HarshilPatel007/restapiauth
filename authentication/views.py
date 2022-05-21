@@ -16,6 +16,22 @@ from .serializers import (
 from .utils import Utils
 
 
+def send_mail(user, request):
+    token = RefreshToken.for_user(user).access_token
+    current_site = get_current_site(request)
+    current_site_url = current_site.domain
+    relative_link = reverse("email_verification")
+    absolute_url = f"http://{current_site_url}{relative_link}?token={str(token)}"
+    email_body = f"Hi {user.get_full_name()},\nUse below link to verify your email.\n\n{absolute_url}"
+    token_data = {
+        "email_to": user.email,
+        "email_subject": "Please verify your email.",
+        "email_body": email_body,
+    }
+
+    Utils.send_email(token_data)
+
+
 class RegisterView(generics.GenericAPIView):
 
     serializer_class = RegisterSerializer
@@ -28,20 +44,7 @@ class RegisterView(generics.GenericAPIView):
 
         user = User.objects.get(email=user_data["email"])
 
-        token = RefreshToken.for_user(user).access_token
-        current_site = get_current_site(request)
-        current_site_url = current_site.domain
-        relative_link = reverse("email_verification")
-        absolute_url = f"http://{current_site_url}{relative_link}?token={str(token)}"
-        email_body = f"Hi {user.get_full_name()},\nUse below link to verify your email.\n\n{absolute_url}"
-        token_data = {
-            # "domain": absolute_url,
-            "email_to": user.email,
-            "email_subject": "Please verify your email.",
-            "email_body": email_body,
-        }
-
-        Utils.send_email(token_data)
+        send_mail(user, request)
 
         return Response(user_data, status=status.HTTP_201_CREATED)
 
@@ -113,22 +116,7 @@ class ResendVerificationLinkView(generics.GenericAPIView):
         user = User.objects.get(email=email)
 
         if not user.is_verified:
-            token = RefreshToken.for_user(user).access_token
-            current_site = get_current_site(request)
-            current_site_url = current_site.domain
-            relative_link = reverse("email_verification")
-            absolute_url = (
-                f"http://{current_site_url}{relative_link}?token={str(token)}"
-            )
-            email_body = f"Hi {user.get_full_name()},\nUse below link to verify your email.\n\n{absolute_url}"
-            token_data = {
-                # "domain": absolute_url,
-                "email_to": user.email,
-                "email_subject": "Please verify your email.",
-                "email_body": email_body,
-            }
-
-            Utils.send_email(token_data)
+            send_mail(user, request)
 
             return Response(
                 {
