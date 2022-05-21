@@ -3,11 +3,13 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
-from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+import jwt
 
 
-# Create your models here.
 class UserManager(BaseUserManager):
     def _create_user(self, username, email, password=None, **extra_fields):
         if username is None:
@@ -48,7 +50,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    username = models.CharField(max_length=50, unique=True, db_index=True)
+    username_validator = UnicodeUsernameValidator()
+    username = models.CharField(
+        max_length=50, unique=True, db_index=True, validators=[username_validator]
+    )
     email = models.EmailField(max_length=250, unique=True, db_index=True)
     first_name = models.CharField(max_length=50, blank=True, null=True)
     last_name = models.CharField(max_length=50, blank=True, null=True)
@@ -68,8 +73,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
-    def tokens(self):
-        return ""
+    def token(self):
+        token = jwt.encode(
+            {"username": self.username, "email": self.email},
+            settings.SECRET_KEY,
+            algorithm="HS512",
+        )
+        return token
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"

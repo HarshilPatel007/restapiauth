@@ -16,14 +16,20 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = "__all__"
 
-    def validate(self, attrs):
-        email = attrs.get("email", "")
-        username = attrs.get("username", "")
-
-        if not username.isalnum():
-            msg = _("Username should only contains alphanumeric characters")
-            raise serializers.ValidationError(msg)
-        return attrs
-
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)  # type: ignore
+
+
+class LoginSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        max_length=150,
+        min_length=10,
+        write_only=True,
+        required=True,
+        style={"input_type": "password"},
+    )
+
+    class Meta:
+        model = User
+        fields = ["email", "password", "token", "is_verified"]
+        read_only_fields = ["token", "is_verified"]

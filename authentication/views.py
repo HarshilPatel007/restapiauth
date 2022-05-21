@@ -1,24 +1,23 @@
+from django.conf import settings
+from django.contrib.auth import authenticate
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
-from django.conf import settings
-
+import jwt
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import RegisterSerializer
+
 from .models import User
+from .serializers import RegisterSerializer, LoginSerializer
 from .utils import Utils
-import jwt
 
 
-# Create your views here.
 class RegisterView(generics.GenericAPIView):
 
     serializer_class = RegisterSerializer
 
     def post(self, request):
-        user = request.data
-        serializer = self.serializer_class(data=user)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         user_data = serializer.data
@@ -72,3 +71,30 @@ class VerifyEmail(generics.GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class LoginView(generics.GenericAPIView):
+
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        user = User.objects.get(email=email)
+
+        if user.is_verified:
+            user = authenticate(email=email, password=password)
+            if user:
+                serializer = self.serializer_class(user)
+
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(
+                {"auth_error": "Invalid credentials, try again"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        return Response(
+            {
+                "account_verification": "Account Is Not Verified (Verify your email before login)"
+            },
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
