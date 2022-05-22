@@ -1,16 +1,20 @@
+import jwt
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
-import jwt
-from rest_framework import generics, status
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework_simplejwt.token_blacklist.models import (
+    BlacklistedToken,
+    OutstandingToken,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import (
-    RegisterSerializer,
     LoginSerializer,
+    RegisterSerializer,
     ResendVerificationLinkSerializer,
 )
 from .utils import Utils
@@ -127,4 +131,34 @@ class ResendVerificationLinkView(generics.GenericAPIView):
         return Response(
             {"account_verification": "Your Account Is Already Verified"},
             status=status.HTTP_200_OK,
+        )
+
+
+class LogoutView(generics.GenericAPIView):
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        _token = request.data["refresh_token"]
+        refresh_token = RefreshToken(_token)
+        refresh_token.blacklist()
+
+        return Response(
+            {"auth_info": "Sucessfully Logout"},
+            status=status.HTTP_205_RESET_CONTENT,
+        )
+
+
+class LogoutFromAllDevicesView(generics.GenericAPIView):
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        tokens = OutstandingToken.objects.filter(user_id=request.user.id)
+        for token in tokens:
+            t, _ = BlacklistedToken.objects.get_or_create(token=token)
+
+        return Response(
+            {"auth_info": "Sucessfully Logout From All Devices"},
+            status=status.HTTP_205_RESET_CONTENT,
         )

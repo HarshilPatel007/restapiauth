@@ -6,8 +6,7 @@ from django.contrib.auth.models import (
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.conf import settings
-import jwt
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserManager(BaseUserManager):
@@ -74,12 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def token(self):
-        token = jwt.encode(
-            {"username": self.username, "email": self.email},
-            settings.SECRET_KEY,
-            algorithm="HS512",
-        )
-        return token
+        _token = RefreshToken.for_user(self)
+        return {
+            "refresh": str(_token),
+            "access": str(_token.access_token),
+        }
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
